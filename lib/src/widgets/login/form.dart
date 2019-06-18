@@ -100,8 +100,9 @@ class _LoginFormState extends State<LoginForm> {
           if (state is AuthFailure) {
             _onWidgetDidBuild(() {
               String errorMessage = '';
+              // Example of how you can check error message differently in each platform
               if (_isIos) {
-                errorMessage = state.error.details;
+                errorMessage = state.error.message;
               } else
                 errorMessage = state.error.message;
               Scaffold.of(context).showSnackBar(
