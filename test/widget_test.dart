@@ -1,33 +1,77 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility that Flutter provides. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mockito/mockito.dart';
 
 import 'package:flutter_boilerplate/src/api/firebase.dart';
-import 'package:flutter_boilerplate/src/screen/boilerplate.dart';
+import 'package:flutter_boilerplate/src/state/auth/auth.dart';
+
+class MockApi extends Mock implements Auth {}
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    //   await tester.pumpWidget(Boilerplate(
-    //     auth: Auth(),
-    //   ));
+  AuthBloc authBloc;
+  MockApi auth;
 
-    //   // Verify that our counter starts at 0.
-    //   expect(find.text('0'), findsOneWidget);
-    //   expect(find.text('1'), findsNothing);
+  setUp(() {
+    auth = MockApi();
+    authBloc = AuthBloc(auth: auth);
+  });
 
-    //   // Tap the '+' icon and trigger a frame.
-    //   await tester.tap(find.byIcon(Icons.add));
-    //   await tester.pump();
+  test('initial state is correct', () {
+    expect(authBloc.initialState, AuthUninitialized());
+  });
 
-    //   // Verify that our counter has incremented.
-    //   expect(find.text('0'), findsNothing);
-    //   expect(find.text('1'), findsOneWidget);
+  test('dispose does not emit new states', () {
+    expectLater(authBloc.state, emitsInOrder(<AuthState>[]));
+    authBloc.dispose();
+  });
+
+  group('AppStarted', () {
+    test('emits [uninitialized, unauthicated] for invalid token', () {
+      final List<AuthState> expectedResponse = [
+        AuthUninitialized(),
+        AuthUnauthenticated()
+      ];
+
+      when(auth.userExists()).thenAnswer((_) => Future<bool>.value(false));
+
+      expectLater(authBloc.state, emitsInOrder(expectedResponse));
+
+      authBloc.dispatch(AppStarted());
+    });
+  });
+
+  group('LoggedIn', () {
+    test('emits [uninitialized, loading, authenticated] when user log in', () {
+      final List<AuthState> expectedResponse = [
+        AuthUninitialized(),
+        AuthLoading(),
+        AuthAuthenticated(),
+      ];
+
+      expectLater(
+        authBloc.state,
+        emitsInOrder(expectedResponse),
+      );
+
+      authBloc.dispatch(LoggedIn(username: 'valid.username', password: 'valid.password'));
+    });
+  });
+
+  group('LoggedOut', () {
+    test(
+        'emits [uninitialized, loading, unauthenticated] when user is logged out',
+        () {
+      final List<AuthState> expectedResponse = [
+        AuthUninitialized(),
+        AuthLoading(),
+        AuthUnauthenticated(),
+      ];
+
+      expectLater(
+        authBloc.state,
+        emitsInOrder(expectedResponse),
+      );
+
+      authBloc.dispatch(LoggedOut());
+    });
   });
 }
